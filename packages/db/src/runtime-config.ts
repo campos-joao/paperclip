@@ -22,7 +22,7 @@ export type ResolvedDatabaseTarget =
   | {
       mode: "postgres";
       connectionString: string;
-      source: "DATABASE_URL" | "paperclip-env" | "config.database.connectionString";
+      source: "DATABASE_URL" | "paperclip-env" | "workspace-env" | "config.database.connectionString";
       configPath: string;
       envPath: string;
     }
@@ -77,6 +77,19 @@ function findConfigFileFromAncestors(startDir: string): string | null {
 
   while (true) {
     const candidate = path.resolve(currentDir, ".paperclip", CONFIG_BASENAME);
+    if (existsSync(candidate)) return candidate;
+
+    const nextDir = path.resolve(currentDir, "..");
+    if (nextDir === currentDir) return null;
+    currentDir = nextDir;
+  }
+}
+
+function findEnvFileFromAncestors(startDir: string): string | null {
+  let currentDir = path.resolve(startDir);
+
+  while (true) {
+    const candidate = path.resolve(currentDir, ENV_BASENAME);
     if (existsSync(candidate)) return candidate;
 
     const nextDir = path.resolve(currentDir, "..");
@@ -216,6 +229,8 @@ export function resolveDatabaseTarget(): ResolvedDatabaseTarget {
   const configPath = resolvePaperclipConfigPath();
   const envPath = resolvePaperclipEnvPath(configPath);
   const envEntries = readEnvEntries(envPath);
+  const workspaceEnvPath = findEnvFileFromAncestors(process.cwd());
+  const workspaceEnvEntries = workspaceEnvPath ? readEnvEntries(workspaceEnvPath) : {};
 
   const envUrl = process.env.DATABASE_URL?.trim();
   if (envUrl) {
@@ -236,6 +251,17 @@ export function resolveDatabaseTarget(): ResolvedDatabaseTarget {
       source: "paperclip-env",
       configPath,
       envPath,
+    };
+  }
+
+  const workspaceEnvUrl = workspaceEnvEntries.DATABASE_URL?.trim();
+  if (workspaceEnvUrl) {
+    return {
+      mode: "postgres",
+      connectionString: workspaceEnvUrl,
+      source: "workspace-env",
+      configPath,
+      envPath: workspaceEnvPath ?? envPath,
     };
   }
 

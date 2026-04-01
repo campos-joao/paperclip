@@ -72,6 +72,9 @@ export async function testEnvironment(
     if (typeof value === "string") env[key] = value;
   }
   const runtimeEnv = ensurePathInEnv({ ...process.env, ...env });
+  if (!isNonEmpty(runtimeEnv.GEMINI_API_KEY) && isNonEmpty(runtimeEnv.GOOGLE_API_KEY)) {
+    runtimeEnv.GEMINI_API_KEY = runtimeEnv.GOOGLE_API_KEY;
+  }
   try {
     await ensureCommandResolvable(command, cwd, runtimeEnv);
     checks.push({
@@ -135,7 +138,7 @@ export async function testEnvironment(
       const model = asString(config.model, DEFAULT_GEMINI_LOCAL_MODEL).trim();
       const approvalMode = asString(config.approvalMode, asBoolean(config.yolo, false) ? "yolo" : "default");
       const sandbox = asBoolean(config.sandbox, false);
-      const helloProbeTimeoutSec = Math.max(1, asNumber(config.helloProbeTimeoutSec, 10));
+      const helloProbeTimeoutSec = Math.max(1, asNumber(config.helloProbeTimeoutSec, 20));
       const extraArgs = (() => {
         const fromExtraArgs = asStringArray(config.extraArgs);
         if (fromExtraArgs.length > 0) return fromExtraArgs;
@@ -207,7 +210,7 @@ export async function testEnvironment(
           ...(hasHello
             ? {}
             : {
-              hint: "Try `gemini --output-format json \"Respond with hello.\"` manually to inspect full output.",
+              hint: "Try `gemini --output-format json --prompt \"Respond with hello.\"` manually to inspect full output.",
             }),
         });
       } else if (authMeta.requiresAuth) {
@@ -224,7 +227,7 @@ export async function testEnvironment(
           level: "error",
           message: "Gemini hello probe failed.",
           ...(detail ? { detail } : {}),
-          hint: "Run `gemini --output-format json \"Respond with hello.\"` manually in this working directory to debug.",
+          hint: "Run `gemini --output-format json --prompt \"Respond with hello.\"` manually in this working directory to debug.",
         });
       }
     }

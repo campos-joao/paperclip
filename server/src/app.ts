@@ -245,7 +245,7 @@ export async function createApp(
     if (uiDist) {
       const indexHtml = applyUiBranding(fs.readFileSync(path.join(uiDist, "index.html"), "utf-8"));
       app.use(express.static(uiDist));
-      app.get(/.*/, (_req, res) => {
+      app.get("/{*path}", (_req, res) => {
         res.status(200).set("Content-Type", "text/html").end(indexHtml);
       });
     } else {
@@ -272,7 +272,7 @@ export async function createApp(
     });
 
     app.use(vite.middlewares);
-    app.get(/.*/, async (req, res, next) => {
+    app.get("/{*path}", async (req, res, next) => {
       try {
         const templatePath = path.resolve(uiRoot, "index.html");
         const template = fs.readFileSync(templatePath, "utf-8");

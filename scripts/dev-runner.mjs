@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
@@ -71,6 +71,27 @@ if (process.env.npm_config_tailscale_auth === "true") {
 }
 if (process.env.npm_config_authenticated_private === "true") {
   tailscaleAuth = true;
+}
+
+// Load project-root .env into process.env so child processes (e.g. migration
+// checks) see DATABASE_URL and other variables before the server's own dotenv
+// loading kicks in.
+const rootEnvPath = path.join(repoRoot, ".env");
+if (existsSync(rootEnvPath)) {
+  for (const rawLine of readFileSync(rootEnvPath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    let value = rawValue.trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
 }
 
 const env = {

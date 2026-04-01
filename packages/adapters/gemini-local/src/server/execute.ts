@@ -217,6 +217,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       (entry): entry is [string, string] => typeof entry[1] === "string",
     ),
   );
+  if (!hasNonEmptyEnvValue(effectiveEnv, "GEMINI_API_KEY") && hasNonEmptyEnvValue(effectiveEnv, "GOOGLE_API_KEY")) {
+    effectiveEnv.GEMINI_API_KEY = effectiveEnv.GOOGLE_API_KEY;
+  }
   const billingType = resolveGeminiBillingType(effectiveEnv);
   const runtimeEnv = ensurePathInEnv(effectiveEnv);
   await ensureCommandResolvable(command, cwd, runtimeEnv);
